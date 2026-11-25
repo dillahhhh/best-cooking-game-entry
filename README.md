@@ -1,8 +1,8 @@
 # WARUNG RUSH — best-cooking-game-20261125-0137
 
-[![bounty](https://img.shields.io/badge/bounty-best--cooking--game--20261125--0137-orange)](https://make.fun/bounty/best-cooking-game-20261125-0137)
-[![rank](https://img.shields.io/badge/rank-awaiting%20judgement-blue)](https://make.fun/bounty/best-cooking-game-20261125-0137)
-[![reward](https://img.shields.io/badge/reward-%24250%20top%2010-gold)](https://make.fun/bounty/best-cooking-game-20261125-0137)
+[![make.fun · best-cooking-game-20261125-0137](https://make.fun/badge/best-cooking-game-20261125-0137.svg)](https://make.fun/bounty/best-cooking-game-20261125-0137?utm_source=github&utm_medium=readme&utm_campaign=best-cooking-game-20261125-0137)
+[![rank](https://make.fun/badge/best-cooking-game-20261125-0137/dillahhhh/best-cooking-game-entry/rank.svg)](https://make.fun/bounty/best-cooking-game-20261125-0137/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-cooking-game-20261125-0137)
+[![reward](https://make.fun/badge/best-cooking-game-20261125-0137/dillahhhh/best-cooking-game-entry/reward.svg)](https://make.fun/bounty/best-cooking-game-20261125-0137?utm_source=github&utm_medium=readme&utm_campaign=best-cooking-game-20261125-0137)
 
 **WARUNG RUSH** is an original one-screen Indonesian street-food rush cooking game.
 You run the busiest warung in the village: tickets arrive on the order board,
