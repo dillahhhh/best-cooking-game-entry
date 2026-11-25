@@ -13,11 +13,17 @@ before they burn, and serve before each customer's patience runs out.
 
 - **Click ingredients** on the counter (or press `1–9`, `0`) to assemble a dish
   on the plate. Each ticket shows exactly what it wants.
-- **MASAK (`M`)** sends a complete plate to the stove. Pull it off with
-  **ANGKAT (`M`)** once it is cooked — leave it too long and it burns.
+- **MASAK (`M`)** sends a complete plate into the wok — and the plate is
+  empty again at once, so you assemble the NEXT dish while the first one
+  cooks. Pull the wok dish off with **ANGKAT (`M`)** once it is cooked —
+  leave it too long and it burns. Cook A → assemble B → lift A → serve A.
 - **SAJIKAN (`S`)**, or click the ticket itself, serves the finished dish on
   the serve counter. Fast serves earn bigger tips; serving in a row builds a
   combo that raises every tip.
+- Watch the ticket badges: **PEDAS** swaps bawang for sambal, **NO BAWANG**
+  drops bawang, **PRIORITAS** pays 1.5× tip but walks out faster. Re-click
+  the last ingredient to take it back off the plate; `P` pauses (also
+  auto-pauses when the tab loses focus).
 - A wrong ingredient or a wrong serve costs every waiting customer patience.
   Three customers walking out ends the shift early.
 - One shift lasts **180 seconds**. Orders arrive faster and recipes get longer

@@ -3,7 +3,7 @@
 // plates, cooks them on the stove, and serves before patience runs out.
 import { MAX_STRIKES, SHIFT_SECONDS } from './config.js';
 import { createBoard, penaliseBoard, seedBoard, serveValue, takeOrder, updateBoard } from './orders.js';
-import { addIngredient, canCook, canServe, createKitchen, finishNoCook, isBurning, plateRecipe, pullFromStove, startCooking, takeReadyPlate, trashPlate, updateKitchen } from './kitchen.js';
+import { addIngredient, canCook, canServe, createKitchen, finishNoCook, isBurning, isWokBurnt, plateRecipe, pullFromStove, startCooking, takeReadyPlate, trashPlate, updateKitchen, wokBusy } from './kitchen.js';
 import { createAudio, playAdd, playBad, playBurnt, playClick, playCook, playServe, playStart, playTick, toggleMute, unlockAudio } from './audio.js';
 import { clickAction, hoverTarget, keyAction } from './input.js';
 import { draw, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
@@ -39,6 +39,7 @@ export function createState(seed = 20261125) {
     audio: createAudio(),
     floaters: [],
     hover: null,
+    serveFlashUntil: 0, // golden flash border right after a serve
     lastTickSecond: -1,
   };
 }
@@ -91,8 +92,10 @@ function serveDish(state, orderId = null) {
   state.coins += value.total;
   state.score += value.total * 10 + state.combo * 5;
   state.served += 1;
+  state.serveFlashUntil = state.now + 0.5;
   addFloater(state, 1118, 440, `+${value.total} koin`, '#7CFC98');
   addFloater(state, 1118, 470, `tip +${value.tip}${state.combo > 1 ? ` • combo x${state.combo}` : ''}`, '#ffd34d');
+  if (state.combo >= 3) addFloater(state, 640, 620, `COMBO x${state.combo}!`, '#ffd34d');
   playServe(state.audio);
   return true;
 }
@@ -126,32 +129,53 @@ export function applyAction(state, action) {
   if (state.screen !== SCREEN_PLAY) return;
   switch (action.kind) {
     case 'bin': {
-      if (addIngredient(state.kitchen, action.id, state.now)) playAdd(state.audio);
+      if (addIngredient(state.kitchen, action.id, state.now, state.board.orders)) playAdd(state.audio);
       else playClick(state.audio);
       break;
     }
     case 'cook': {
-      if (state.kitchen.stage === 'building') {
-        const recipe = plateRecipe(state.kitchen);
-        if (recipe && !recipe.cook) {
-          if (finishNoCook(state.kitchen)) playCook(state.audio);
-        } else if (canCook(state.kitchen)) {
-          if (startCooking(state.kitchen)) playCook(state.audio);
-        } else {
-          playClick(state.audio);
-        }
-      } else if (isBurning(state.kitchen)) {
-        // Pull the cooked plate off the stove onto the serve counter.
+      // A cooked wok is pulled FIRST — even while the plate is mid-assembly,
+      // M lifts the wok dish before it burns. (Otherwise the parallel
+      // pipeline deadlocks: the plate is always 'building' while cooking.)
+      if (isBurning(state.kitchen)) {
         if (pullFromStove(state.kitchen)) {
           state.kitchen.message = 'Diangkat ke meja saji!';
           state.kitchen.messageUntil = state.now + 2;
+          playClick(state.audio);
+        } else {
+          state.kitchen.message = 'Meja saji penuh — sajikan dulu!';
+          state.kitchen.messageUntil = state.now + 2;
+          playClick(state.audio);
+        }
+        break;
+      }
+      if (isWokBurnt(state.kitchen)) {
+        trashPlate(state.kitchen, state.now);
+        playClick(state.audio);
+        break;
+      }
+      if (state.kitchen.stage === 'building') {
+        const recipe = plateRecipe(state.kitchen, state.board.orders);
+        if (recipe && !recipe.cook) {
+          if (finishNoCook(state.kitchen, state.board.orders)) playCook(state.audio);
+        } else if (canCook(state.kitchen, state.board.orders)) {
+          if (startCooking(state.kitchen, state.board.orders)) {
+            state.kitchen.message = 'Masuk wajan — rakit hidangan berikut!';
+            state.kitchen.messageUntil = state.now + 2;
+            playCook(state.audio);
+          }
+        } else if (recipe && recipe.cook && wokBusy(state.kitchen)) {
+          state.kitchen.message = 'Wajan masih dipakai — rakit dulu hidangan berikut!';
+          state.kitchen.messageUntil = state.now + 2;
+          playClick(state.audio);
+        } else {
           playClick(state.audio);
         }
       }
       break;
     }
     case 'trash': {
-      if (state.kitchen.plate.length > 0) {
+      if (state.kitchen.plate.length > 0 || state.kitchen.wokStage !== 'empty') {
         trashPlate(state.kitchen, state.now);
         state.combo = 0;
         playClick(state.audio);
@@ -169,8 +193,8 @@ export function applyAction(state, action) {
     case 'plate': {
       // Clicking the plate with a complete no-cook dish finishes it instantly.
       if (state.kitchen.stage === 'building') {
-        const recipe = plateRecipe(state.kitchen);
-        if (recipe && !recipe.cook) finishNoCook(state.kitchen);
+        const recipe = plateRecipe(state.kitchen, state.board.orders);
+        if (recipe && !recipe.cook) finishNoCook(state.kitchen, state.board.orders);
       }
       break;
     }
@@ -244,6 +268,13 @@ export function boot(canvas) {
   window.addEventListener('keydown', (event) => {
     if ([' ', 'ArrowUp', 'ArrowDown'].includes(event.key)) event.preventDefault();
     applyAction(state, keyAction(event.key));
+  });
+  // Pause when the tab loses focus — no silent walk-outs while tabbed away.
+  window.addEventListener('blur', () => {
+    if (state.screen === SCREEN_PLAY) state.screen = SCREEN_PAUSED;
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && state.screen === SCREEN_PLAY) state.screen = SCREEN_PAUSED;
   });
   requestAnimationFrame(frame);
   return state;

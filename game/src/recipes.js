@@ -51,8 +51,25 @@ export function plateFitsRecipe(ids, recipe) {
   return true;
 }
 
-/** True when the plate holds a wrong ingredient for every recipe (dead plate). */
-export function plateIsDead(ids) {
+/**
+ * The recipe a plate completes, checking TICKET needs first (a PEDAS or
+ * NO BAWANG ticket changes the exact ingredients) and the plain menu after.
+ * `orders` is the live board (may be null/empty in tests).
+ */
+export function matchPlate(ids, orders) {
+  const sorted = [...ids].sort().join(',');
+  if (orders) {
+    for (const order of orders) {
+      if ([...order.needs].sort().join(',') === sorted) return RECIPE_BY_ID[order.recipeId];
+    }
+  }
+  return matchRecipe(ids);
+}
+
+/** True when the plate holds a wrong ingredient for every ticket AND every recipe (dead plate). */
+export function plateIsDead(ids, orders) {
   if (ids.length === 0) return false;
+  const fitsOrder = orders && orders.some((order) => plateFitsRecipe(ids, { needs: order.needs }));
+  if (fitsOrder) return false;
   return !RECIPES.some((recipe) => plateFitsRecipe(ids, recipe));
 }

@@ -28,7 +28,7 @@ export function pickRecipe(elapsedSeconds, rng) {
 export function makeOrder(elapsedSeconds, rng) {
   const recipe = pickRecipe(elapsedSeconds, rng);
   const patience = patienceFor(elapsedSeconds);
-  return {
+  const order = {
     id: nextOrderId,
     recipeId: recipe.id,
     name: recipe.name,
@@ -38,7 +38,28 @@ export function makeOrder(elapsedSeconds, rng) {
     // A friendly face: each customer gets a hue + a one-letter initial.
     hue: Math.floor(rng() * 360),
     initial: 'ABCDEFGHJKLMNPRSTW'[Math.floor(rng() * 20)],
+    modifier: null, // 'PEDAS' | 'NO BAWANG' | 'PRIORITAS' | null
   };
+  // Ticket modifiers: a real decision, not just click speed.
+  // PEDAS adds sambal (only when the plate still fits 4 ingredients);
+  // NO BAWANG drops bawang from the recipe; PRIORITAS pays 1.5x tip but
+  // patience drains 1.4x faster. ~35% of tickets carry one.
+  const roll = rng();
+  if (roll < 0.14 && !order.needs.includes('sambal') && recipe.id !== 'esteh') {
+    // PEDAS: swap bawang for sambal (same plate size), or add sambal if room.
+    order.needs = order.needs.includes('bawang')
+      ? order.needs.map((id) => (id === 'bawang' ? 'sambal' : id))
+      : [...order.needs, 'sambal'];
+    order.modifier = 'PEDAS';
+  } else if (roll < 0.26 && order.needs.includes('bawang')) {
+    order.needs = order.needs.filter((id) => id !== 'bawang');
+    order.modifier = 'NO BAWANG';
+  } else if (roll < 0.37) {
+    order.modifier = 'PRIORITAS';
+    order.patience = patience * 0.7;
+    order.patienceMax = order.patience;
+  }
+  return order;
 }
 
 /** Create the board state. */
@@ -59,7 +80,10 @@ export function seedBoard(board, rng) {
  */
 export function updateBoard(board, dt, elapsedSeconds, rng) {
   const walkedOut = [];
-  for (const order of board.orders) order.patience -= dt;
+  for (const order of board.orders) {
+    // PRIORITAS customers are impatient: patience drains 1.4x faster.
+    order.patience -= dt * (order.modifier === 'PRIORITAS' ? 1.4 : 1);
+  }
   for (let i = board.orders.length - 1; i >= 0; i -= 1) {
     if (board.orders[i].patience <= 0) {
       walkedOut.push(board.orders[i].id);
@@ -88,10 +112,12 @@ export function penaliseBoard(board) {
   }
 }
 
-/** Tip for serving `order` now: base price plus a patience bonus. */
+/** Tip for serving `order` now: base price plus a patience bonus. PRIORITAS pays 1.5x tip. */
 export function serveValue(order, combo) {
   const recipe = RECIPES.find((r) => r.id === order.recipeId);
   const patienceRatio = Math.max(0, order.patience / order.patienceMax);
-  const tip = Math.round(4 + 12 * patienceRatio + 2 * Math.min(combo, 8));
+  let tip = Math.round(4 + 12 * patienceRatio + 2 * Math.min(combo, 8));
+  if (order.modifier === 'PRIORITAS') tip = Math.round(tip * 1.5);
+  if (order.modifier === 'PEDAS') tip += 5;
   return { price: recipe.price, tip, total: recipe.price + tip };
 }
